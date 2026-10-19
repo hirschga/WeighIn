@@ -17,5 +17,4 @@ jobs:
           ref: 8a674c987bab62ac3332659313313bcbd3394171
           fetch-depth: 0
       - uses: ./.github/actions/prepare-validation
-      - run: >-
- env python -c "import base64,zlib,hashlib; p=zlib.decompress(base64.b64decode(open('/tmp/sync-source.b64').read())); assert hashlib.sha256(p).hexdigest()=='d80cf26a70e78876e8e3eed71f7af461b1d2945fe25e6a253a33066288d4a0e4'; exec(compile(p,'sync-upstream.py','exec'))"
+      - run: env python -c "import base64,zlib,hashlib; p=zlib.decompress(base64.b64decode(open('/tmp/sync-source.b64').read())); assert hashlib.sha256(p).hexdigest()=='d80cf26a70e78876e8e3eed71f7af461b1d2945fe25e6a253a33066288d4a0e4'; exec(compile(p,'sync-upstream.py','exec'))"
