@@ -1,0 +1,29 @@
+name: Verify repaired submission
+on:
+  push:
+    branches: [validation/repaired-checks]
+    paths: [.github/workflows/verify-repaired.yml]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ba462f5223a664caf86faec4bfa9f4ce836041d1
+      - run: git rev-parse HEAD
+      - uses: ./.github/actions/prepare-validation
+      - run: env npm run lint
+      - run: env npm run typecheck
+      - run: env npm test
+      - run: env npm run build
+      - run: env npm run bundle
+      - run: env npm run provenance
+      - run: cargo +1.95.0 fmt --check --manifest-path native/simulation/Cargo.toml
+      - run: env npm run test:native
+      - run: env npm audit --audit-level=moderate
+      - run: git diff --check
+      - run: git diff --exit-code
+      - run: test -z "$(git status --porcelain)"
