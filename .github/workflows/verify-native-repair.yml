@@ -1,0 +1,40 @@
+name: Verify complete repaired candidate
+on:
+  push:
+    branches: [validation/repaired-checks]
+    paths: [.github/workflows/verify-native-repair.yml]
+permissions:
+  contents: write
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ba462f5223a664caf86faec4bfa9f4ce836041d1
+          fetch-depth: 0
+      - uses: ./.github/actions/prepare-validation
+      - run: rustup component add rustfmt --toolchain 1.95.0
+      - run: cargo +1.95.0 fmt --manifest-path native/simulation/Cargo.toml
+      - run: env python -c "import hashlib; assert hashlib.sha256(open('native/simulation/src/main.rs','rb').read()).hexdigest()=='c46eaa54dc07ea5aed5ab42481328e630d7b8f595e5198f7c58b468f9949507e'"
+      - run: env npm run bundle
+      - run: git config user.name 'github-actions[bot]'
+      - run: git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+      - run: git add native/simulation/src/main.rs provenance-manifest.json
+      - run: git commit -m 'Format native helper for pinned Rust toolchain'
+      - run: git rev-parse HEAD
+      - run: git diff --exit-code
+      - run: env npm run lint
+      - run: env npm run typecheck
+      - run: env npm test
+      - run: env npm run build
+      - run: env npm run bundle
+      - run: env npm run provenance
+      - run: cargo +1.95.0 fmt --check --manifest-path native/simulation/Cargo.toml
+      - run: env npm run test: ative
+      - run: env npm audit --audit-level=moderate
+      - run: git diff --check
+      - run: git diff --exit-code
+      - run: test -z "$(git status --porcelain)"
+      - run: git push origin HEAD:fix/report-delivery-diff
