@@ -1,0 +1,39 @@
+name: Validate baseline and fix
+on: {push: {branches: [validation/weighin-113], paths: [.github/workflows/final-validation.yml]}}
+permissions:
+  contents: write
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: |
+          git config user.name 'Glenn Hirsch'
+          git config user.email 'hirschga@users.noreply.github.com'
+          git fetch https://github.com/WeighInNG/WeighIn.git main
+          git merge --no-edit FETCH_HEAD
+          node --version
+          npm ci
+          cargo +1.95.0 fetch --locked --manifest-path native/simulation/Cargo.toml
+          node -e "require('fs').mkdirSync('/tmp/warm',{recursive:true});require('fs').writeFileSync('/tmp/warm/package.json',JSON.stringify({dependencies:require('./package.json').dependencies}))"
+          npm install --prefix /tmp/warm --ignore-scripts --no-audit --no-fund
+          python .github/validate-solution.py
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git add src/action.ts README.md docs/architecture.md tests/fail-closed.test.cjs tests/support/action-unit-hook.cjs test/npm-audit-policy.test.ts bundled/index.js bundled/comment-action.js provenance-manifest.json
+          git commit -m 'fix: retain comparison after report delivery failure'
+          gh auth setup-git
+          git push origin HEAD:validation/weighin-113
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: validation
+          path: validation-output/
