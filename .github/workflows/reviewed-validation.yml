@@ -1,0 +1,37 @@
+name: Validate reviewed fix
+on: {push: {branches: [validation/weighin-113], paths: [.github/workflows/reviewed-validation.yml]}}
+permissions: {contents: write}
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0, persist-credentials: false}
+      - uses: actions/setup-node@v4
+        with: { ode-version: 24}
+      - run: |
+          python - <<'PYTHON'
+          import re,gzip,base64,hashlib,pathlib
+          s=pathlib.Path('.github/workflows/solution-validation.yml').read_text()
+          p=re.search("echo '([^']+)'",s)[1].replace('OUYuTzBNukkoxeney7','OUYuTzBNpukkoxeney7')
+          b=gzip.decompress(base64.b64decode(p))
+          assert hashlib.sha256(b).hexdigest()=='5af1a89596e3707afae998be808f60a420df32d609a974dc134964668d0765c2'
+          b=b.replace(b'prettier --write src/action.ts',b'prettier --write src/action.ts test/npm-audit-policy.test.ts')
+          pathlib.Path('/tmp/validate.sh').write_bytes(b)
+          PYTHON
+          git config user.name 'Glenn Hirsch'
+          git config user.email 'hirschga@users.noreply.github.com'
+          git fetch https://github.com/WeighInNG/WeighIn.git main
+          git merge --no-edit FETCH_HEAD
+          bash /tmp/validate.sh
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git add src/action.ts README.md docs/architecture.md tests/fail-closed.test.cjs tests/support/action-unit-hook.cjs test/npm-audit-policy.test.ts bundled/index.js bundled/comment-action.js provenance-manifest.json
+          git commit -m 'fix: retain comparison after report delivery failure'
+          gh auth setup-git
+          git push origin HEAD:validation/weighin-113
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: validation, path: validation-output/}
